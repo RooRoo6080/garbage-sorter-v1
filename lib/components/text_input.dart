@@ -7,6 +7,7 @@ class TextInput extends StatefulWidget {
   @override
   State<TextInput> createState() => _TextInputState();
 }
+
 String output = "";
 String input = "";
 
@@ -60,11 +61,22 @@ class _TextInputState extends State<TextInput> {
 }
 
 Future<String> completion() async {
-  OpenAI.apiKey = "OPENAI-API-KEY";
+  OpenAI.apiKey = "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";
   final completion = await OpenAI.instance.completion.create(
     model: "text-davinci-003",
     prompt:
-        "What goes in the recycling bin: plastics, soda and juice bottles, milk jugs, water jugs, rigid plastic containers, creates and trays, tin, aluminum, scrap metal, steel cans, dishes, empty aerosol cans, soup cartons, clean egg cartons, paper file folders, paper file folders, junk mail, magazines, milk and juice cartons, newspaper, paper, books, paper bags, post-it notes, clean cardboard, cereal boxes, frozen food boxes, beverage bottles, glass.\nWhat goes in the trash bin: candy wrappers, vegetables, chip bags, juice pouches, coffee pods, food, paper cups, straws plastic utensils, dishes, flower pots, vases, paper plates, food soiled items, gift wrap, tissues, toilet papaer, laminated paper, photographs, hardback book covers, stickers, plastic golves, styrofoam, bubble wrap, unusable clothing, unusable fabric.\nWhich bin does$input go in? Respond with either 'Recycle' or 'Trash'.",
+        "What goes in the recycling bin: plastics, soda and juice bottles, milk jugs, water jugs, rigid plastic containers, creates and trays, tin, aluminum, scrap metal, steel cans, dishes, empty aerosol cans, soup cartons, clean egg cartons, paper file folders, paper file folders, junk mail, magazines, milk and juice cartons, newspaper, paper, books, paper bags, post-it notes, clean cardboard, cereal boxes, frozen food boxes, beverage bottles, glass. What goes in the trash bin: candy wrappers, vegetables, chip bags, juice pouches, coffee pods, food, paper cups, straws plastic utensils, dishes, flower pots, vases, paper plates, food soiled items, gift wrap, tissues, toilet papaer, laminated paper, photographs, hardback book covers, stickers, plastic golves, styrofoam, bubble wrap, unusable clothing, unusable fabric. Which bin does$input go in? Respond with onlyeither 'Recycle' or 'Trash'.",
+  );
+  debugPrint(completion.choices[0].text);
+  return completion.choices[0].text;
+}
+
+Future<String> imageCompletion(tag) async {
+  OpenAI.apiKey = "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";
+  final completion = await OpenAI.instance.completion.create(
+    model: "text-davinci-003",
+    prompt:
+        "What goes in the recycling bin: plastics, soda and juice bottles, milk jugs, water jugs, rigid plastic containers, creates and trays, tin, aluminum, scrap metal, steel cans, dishes, empty aerosol cans, soup cartons, clean egg cartons, paper file folders, paper file folders, junk mail, magazines, milk and juice cartons, newspaper, paper, books, paper bags, post-it notes, clean cardboard, cereal boxes, frozen food boxes, beverage bottles, glass. What goes in the trash bin: candy wrappers, vegetables, chip bags, juice pouches, coffee pods, food, paper cups, straws plastic utensils, dishes, flower pots, vases, paper plates, food soiled items, gift wrap, tissues, toilet papaer, laminated paper, photographs, hardback book covers, stickers, plastic golves, styrofoam, bubble wrap, unusable clothing, unusable fabric. Which bin does$tag go in? Respond with onlyeither 'Recycle' or 'Trash'.",
   );
   debugPrint(completion.choices[0].text);
   return completion.choices[0].text;

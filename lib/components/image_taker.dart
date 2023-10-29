@@ -2,13 +2,12 @@
 import 'dart:html';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-// ignore: import_of_legacy_library_into_null_safe
-import 'package:universal_io/io.dart' as uio;
+import 'package:dart_openai/openai.dart';
 import 'package:http/http.dart' as http;
-import 'package:file_picker/file_picker.dart';
+import 'dart:convert';
 
 String? imageUrl;
+String outputBin = "";
 
 class CameraApp extends StatefulWidget {
   const CameraApp({super.key});
@@ -95,6 +94,7 @@ class _CameraViewState extends State<CameraView> {
   String? error;
   CameraController? controller;
   late CameraDescription cameraDescription = widget.cameras[0];
+  TextEditingController textController = TextEditingController();
 
   Future<void> initCam(CameraDescription description) async {
     setState(() {
@@ -180,26 +180,52 @@ class _CameraViewState extends State<CameraView> {
                 : () async {
                     final file = await controller!.takePicture();
                     final bytes = await file.readAsBytes();
-
-                    final link = AnchorElement(
-                        href: Uri.dataFromBytes(bytes, mimeType: 'image/png')
-                            .toString());
-
-                    link.download = 'picture.png';
-                    link.click();
-                    link.remove();
-                    var picked = await FilePicker.platform.pickFiles();
-
-                    if (picked != null) {
-                      debugPrint(picked.files.first.name);
-                    }
-
-                    categorizer(uploadImage(picked));
+                    // debugPrint(Uri.dataFromBytes(bytes, mimeType: 'image/png')
+                        // .toString()
+                        // .substring(22));
+                    String tag = await categorizer(bytes);
+                    setState(() {
+                      outputBin = tag;
+                    });
                   },
             child: const Text('Take picture'),
           ),
           const SizedBox(
             height: 20,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(200, 20, 200, 20),
+            child: TextField(
+              controller: textController,
+              decoration: const InputDecoration(
+                hintText: "Item description",
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              String o = await completionBin(textController.text);
+              setState(() {
+                outputBin = o;
+              });
+            },
+            child: const Text('Submit'),
+          ),
+          const SizedBox(
+            height: 20,
+          ),
+          const Divider(
+            height: 5,
+            thickness: 5,
+            indent: 20,
+            endIndent: 20,
+          ),
+          Text(
+            outputBin,
+            style: const TextStyle(
+              fontSize: 50,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -207,49 +233,71 @@ class _CameraViewState extends State<CameraView> {
   }
 }
 
-Future<void> categorizer(image) async {
-  debugPrint('ACTIVATED');
-
-  const apiKey = 'IMAGGA-API-KEY';
-  const apiSecret = 'IMAGGA-API-SECRET';
-  imageUrl = image;
-  var url = 'https://api.imagga.com/v2/tags?image_url=$imageUrl';
-  final response = await http.get(Uri.parse(url), headers: {
-    'Authorization': 'Basic ${base64Encode(utf8.encode('$apiKey:$apiSecret'))}'
-  });
-  if (response.statusCode == 200) {
-    // Request successful
-    debugPrint(response.body);
-  } else {
-    // Request failed
-    debugPrint('Request failed with status: ${response.statusCode}.');
-  }
+Future<String> completionBin (input) async {
+  OpenAI.apiKey = "API KEY";
+  final completion = await OpenAI.instance.completion.create(
+    model: "text-davinci-003",
+    prompt:
+        "What goes in the recycling bin: plastics, soda and juice bottles, milk jugs, water jugs, rigid plastic containers, creates and trays, tin, aluminum, scrap metal, steel cans, dishes, empty aerosol cans, soup cartons, clean egg cartons, paper file folders, paper file folders, junk mail, magazines, milk and juice cartons, newspaper, paper, books, paper bags, post-it notes, clean cardboard, cereal boxes, frozen food boxes, beverage bottles, glass. What goes in the trash bin: candy wrappers, vegetables, chip bags, juice pouches, coffee pods, food, paper cups, straws, plastic utensils, dishes, flower pots, vases, paper plates, food soiled items, gift wrap, tissues, toilet papaer, laminated paper, photographs, hardback book covers, stickers, plastic golves, styrofoam, bubble wrap, unusable clothing, unusable fabric. Which bin does$input go in? Respond with onlyeither 'Recycle' or 'Trash'.",
+  );
+  // debugPrint("completion input tag: $input");
+  // debugPrint("completion output: ${completion.choices[0].text.trim()}");
+  return completion.choices[0].text.trim().replaceAll('.', '');
 }
 
-Future<String> uploadImage(imageFile) async {
-  final url = Uri.parse('https://freeimage.host/api/1/upload');
-  final request = http.MultipartRequest('POST', url);
-  request.headers['Content-Type'] = 'multipart/form-data';
-  request.fields['key'] = 'FREEIMAGEHOST-API-KEY';
+Future<String> categorizer(image) async {
+  // debugPrint('ACTIVATED');
+  final url = Uri.parse(
+      "https://api.imgbb.com/1/upload?expiration=600&key=c02d9a6d19488064be587c3e0f8fcdce");
+  final imageBase64 =
+      Uri.dataFromBytes(image, mimeType: 'image/png').toString().substring(22);
 
-  final imageStream = http.ByteStream(imageFile.openRead());
-  final imageLength = await imageFile.length();
-  final imageUpload = http.MultipartFile(
-    'source',
-    imageStream,
-    imageLength,
-    filename: 'image.jpg',
-  );
+  try {
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: {
+        "image": imageBase64,
+      },
+    );
 
-  request.files.add(imageUpload);
-  final response = await request.send();
+    if (response.statusCode == 200) {
+      // debugPrint("UPLOAD SUCCESSFUL");
+      // debugPrint(response.body);
+      String link = response.body
+          .substring(response.body.indexOf('"url":"') + 7,
+              response.body.indexOf('","display_url'))
+          .replaceAll(r'\', '');
+      // debugPrint(link);
+      String apiUrl = 'https://api.imagga.com/v2/tags?image_url=$link';
+      // debugPrint(apiUrl);
+      const String key = 'KEY';
+      const String secret = 'SECRET';
 
-  if (response.statusCode == 200) {
-    final responseJson = jsonDecode(await response.stream.bytesToString());
-    final imageUrl = responseJson['image']['url'];
-    debugPrint(imageUrl);
-    return imageUrl;
-  } else {
-    throw Exception('Failed to upload image');
+      final tags = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Basic ${base64Encode(utf8.encode('$key:$secret'))}'
+        },
+      );
+
+      if (tags.statusCode == 200) {
+        // debugPrint('Response data: ${tags.body}');
+        String tag = tags.body.substring(
+            tags.body.indexOf('en":"') + 5, tags.body.indexOf('"}},'));
+        // debugPrint("categorizer: $tag");
+        return completionBin(tag);
+      } else {
+        debugPrint('Request failed with status code: ${response.statusCode}');
+        debugPrint('Response body: ${tags.body}');
+      }
+    } else {
+      debugPrint("Failed to upload. Status code: ${response.statusCode}");
+    }
+  } catch (e) {
+    debugPrint("Error: $e");
   }
+  return "-1";
 }
