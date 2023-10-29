@@ -234,7 +234,7 @@ class _CameraViewState extends State<CameraView> {
 }
 
 Future<String> completionBin (input) async {
-  OpenAI.apiKey = "API KEY";
+  OpenAI.apiKey = "";
   final completion = await OpenAI.instance.completion.create(
     model: "text-davinci-003",
     prompt:
@@ -273,8 +273,8 @@ Future<String> categorizer(image) async {
       // debugPrint(link);
       String apiUrl = 'https://api.imagga.com/v2/tags?image_url=$link';
       // debugPrint(apiUrl);
-      const String key = 'KEY';
-      const String secret = 'SECRET';
+      const String key = '';
+      const String secret = '';
 
       final tags = await http.get(
         Uri.parse(apiUrl),
